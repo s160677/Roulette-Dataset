@@ -1,0 +1,75 @@
+```{r}
+#clean data
+data[data == 0] <- NA
+cleaned_data <- na.omit(data)
+cleaned_data <- cleaned_data[,2:3]
+```
+
+
+```{r}
+#Split groups into 1st, 2nd, 3rd 
+cleaned_data$splits <- cut(cleaned_data[,2], 
+                           breaks = c(-Inf, 12, 24, 36), 
+                           labels = c("1", "2", "3"))
+table(cleaned_data$splits)
+
+#summing observed counts
+observed_counts=table(cleaned_data$splits)
+```
+
+
+```{r}
+#visualize full data of each roulette number frequency
+hist(cleaned_data[,2],breaks=seq(0.5,36.5,by=1),col="lightblue",main="Roulette Data",xlab="Roulette Numbers")
+
+#plot the total observed counts in each category
+categories<-c("1-12","13-24", "24-36")
+colors <- c("lightblue", "lightgreen", "coral") 
+barplot(table(cleaned_data$splits), names.arg = categories, 
+        main = "Roulette Table Split Frequency", xlab = "Categories", ylab = "Frequency",
+         col = colors, ylim= c(0,max(observed_counts)+10))
+text(x = 1:3, y = observed_counts, labels = observed_counts, pos = 3, cex = 1.0, col = "blue")
+
+#prior predictive
+
+
+
+```
+
+```{r}
+#setting prior 
+prior=c(1,1,1)
+
+#summing observed counts
+observed_counts=table(cleaned_data$splits)
+
+#calculating posterior
+alpha_posterior <- prior+observed_counts
+posterior <- rdirichlet(10000, alpha_posterior)
+
+#creating a posterior distribution plot in GGplots
+library(ggplot2)
+posterior_df <- data.frame(posterior)
+colnames(posterior_df) <- c("First Dozen", "Second Dozen", "Third Dozen")
+
+ggplot(posterior_df, aes(x = `First Dozen`)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  geom_density(aes(x = `Second Dozen`), fill = "red", alpha = 0.5) +
+  geom_density(aes(x = `Third Dozen`), fill = "green", alpha = 0.5) +
+  geom_vline(xintercept = 1/3, linetype = "dashed", color = "black") +
+  labs(title = "Posterior Distributions of Split Probabilities", x = "Probability", y = "Density") +
+  theme_minimal()
+```
+
+```{r}
+# Calculate summary statistics
+posterior_mean <- colMeans(posterior)
+posterior_median <- apply(posterior, 2, median)
+posterior_quantiles <- apply(posterior, 2, quantile, probs = c(0.025, 0.975))
+
+# Print summary statistics
+cat("Posterior Mean:\n", posterior_mean, "\n\n")
+cat("Posterior Median:\n", posterior_median, "\n\n")
+cat("Posterior 95% Credible Intervals:\n")
+print(posterior_quantiles)
+```
